@@ -1,21 +1,25 @@
+"""A module for base classes in NgenicPy."""
+
 import json
 import logging
+
 import httpx
 
-from ..exceptions import ClientException, ApiException
-from ..const import API_URL
+from ..const import API_URL  # noqa: TID252
+from ..exceptions import ApiException, ClientException  # noqa: TID252
 
 LOG = logging.getLogger(__package__)
 
-class NgenicBase(object):
-    """Superclass for all models"""
 
-    def __init__(self, session=None, json=None):
+class NgenicBase:
+    """Superclass for all models."""
+
+    def __init__(self, session=None, json_data=None) -> None:
         """Initialize our base object.
 
         :param session:
             (required) httpx client
-        :param json:
+        :param json_data:
             (required) Json representation of the concrete model
         """
 
@@ -23,10 +27,10 @@ class NgenicBase(object):
         self._session = session
 
         # backing json of the model
-        self._json = json
-    
+        self._json = json_data
+
     def json(self):
-        """Get a json representaiton of the model
+        """Get a json representaiton of the model.
 
         :return:
 
@@ -34,19 +38,36 @@ class NgenicBase(object):
         return self._json
 
     def uuid(self):
-        """Get uuid attribute"""
+        """Get uuid attribute."""
         return self["uuid"]
 
     def __setitem__(self, attribute, data):
+        """Set an attribute in the model's JSON representation.
+
+        :param attribute:
+            (required) The attribute to set in the JSON representation
+        :param data:
+            (required) The data to set in the JSON representation
+        """
         self._json[attribute] = data
 
     def __getitem__(self, attribute):
+        """Get an attribute from the model's JSON representation.
+
+        :param attribute:
+            (required) The attribute to get from the JSON representation
+        :return:
+            The value of the attribute
+        :raises AttributeError:
+            If the attribute is not found in the JSON representation
+        """
         if attribute not in self._json:
             raise AttributeError(attribute)
         return self._json[attribute]
 
     def update(self):
-        raise ClientException("Cannot update a '%s'" % self.__class__.__name__)
+        """Raise an exception as update is not allowed."""
+        raise ClientException(f"Cannot update a '{self.__class__.__name__}'")
 
     def _parse(self, response):
         rsp_json = None
@@ -60,34 +81,42 @@ class NgenicBase(object):
         try:
             rsp_json = response.json()
         except ValueError:
-            raise ApiException("Ngenic API return an invalid json body (status=%d)" % response.status_code)
+            raise ApiException(
+                f"Ngenic API return an invalid json body (status={response.status_code})",
+            ) from ValueError
 
         return rsp_json
 
-    def _new_instance(self, instance_class, json, **kwargs):
-        """Create a new model instance
+    def _new_instance(self, instance_class, json_data, **kwargs):
+        """Create a new model instance.
 
         :param class instance_class:
-            (required) class of instance to initialize with json
-        :param dict json:
+            (required) class of instance to initialize with jsosn
+        :param dict json_data:
             (required) data to initialize the instance with
         :param kwargs:
             Additional data required by the instance type
         :return:
             new `instance_class` or `list(instance_class)`
         """
-        if json is not None and (not isinstance(json, dict) and not isinstance(json, list)):
-            raise ClientException("Invalid data to create new instance with (expected json)")
-        if not json:
+        if json_data is not None and (
+            not isinstance(json_data, dict) and not isinstance(json_data, list)
+        ):
+            raise ClientException(
+                "Invalid data to create new instance with (expected json)"
+            )
+        if not json_data:
             return None
 
-        if isinstance(json, list):
-            return list(instance_class(session=self._session, json=inst_json, **kwargs) for inst_json in json)
-        else:
-            return instance_class(session=self._session, json=json, **kwargs)
+        if isinstance(json_data, list):
+            return [
+                instance_class(session=self._session, json_data=inst_json, **kwargs)
+                for inst_json in json_data
+            ]
+        return instance_class(self._session, json_data, **kwargs)
 
     def _parse_new_instance(self, url, instance_class, **kwargs):
-        """Get JSON from an URL and create a new instance of it
+        """Get JSON from an URL and create a new instance of it.
 
         :param str url:
             (required) url to get instance data from
@@ -104,7 +133,7 @@ class NgenicBase(object):
         return self._new_instance(instance_class, ret_json, **kwargs)
 
     async def _async_parse_new_instance(self, url, instance_class, **kwargs):
-        """Get JSON from an URL and create a new instance of it
+        """Get JSON from an URL and create a new instance of it.
 
         :param str url:
             (required) url to get instance data from
@@ -122,6 +151,7 @@ class NgenicBase(object):
 
     def _request(self, method, *args, **kwargs):
         """Make a HTTP request.
+
         This is the generic method for all requests, it will handle errors etc in a common way.
 
         :param str method:
@@ -136,22 +166,27 @@ class NgenicBase(object):
         r = None
         try:
             if not isinstance(self._session, httpx.Client):
-                raise ValueError("Cannot use sync methods when context is async")
+                raise TypeError("Cannot use sync methods when context is async")  # noqa: TRY301
 
             request_method = getattr(self._session, method)
             r = request_method(*args, **kwargs)
-            
+
             # raise for e.g. 401
             r.raise_for_status()
 
-            return r
+            return r  # noqa: TRY300
         except httpx.HTTPError as exc:
-            raise ClientException(self._get_error("A request exception occurred", r, parent_ex=exc))
+            raise ClientException(
+                self._get_error("A request exception occurred", r, parent_ex=exc)
+            ) from exc
         except Exception as exc:
-            raise ClientException(self._get_error("An exception occurred", r, parent_ex=exc))
+            raise ClientException(
+                self._get_error("An exception occurred", r, parent_ex=exc)
+            ) from exc
 
     async def _async_request(self, method, is_retry, *args, **kwargs):
         """Make a HTTP request (async).
+
         This is the generic method for all requests, it will handle errors etc in a common way.
 
         :param str method:
@@ -169,51 +204,57 @@ class NgenicBase(object):
         r = None
         try:
             if not isinstance(self._session, httpx.AsyncClient):
-                raise ValueError("Cannot use async methods when context is sync")
+                raise TypeError("Cannot use async methods when context is sync")  # noqa: TRY301
 
             request_method = getattr(self._session, method)
             r = await request_method(*args, **kwargs)
-            
+
             # raise for e.g. 401
             r.raise_for_status()
 
-            return r
+            return r  # noqa: TRY300
         except httpx.CloseError as exc:
             if is_retry:
                 # only retry once
-                raise ClientException(self._get_error("A request exception occurred", r, parent_ex=exc))
-            else:
-                # retry request
-                LOG.debug("Got a CloseError while trying to send request. Retry request once.")
-                return await self._async_request(method, True, *args, **kwargs)
+                raise ClientException(
+                    self._get_error("A request exception occurred", r, parent_ex=exc)
+                ) from exc
+            # retry request
+            LOG.debug(
+                "Got a CloseError while trying to send request. Retry request once."
+            )
+            return await self._async_request(method, True, *args, **kwargs)
         except httpx.HTTPError as exc:
-            raise ClientException(self._get_error("A request exception occurred", r, parent_ex=exc))
+            raise ClientException(
+                self._get_error("A request exception occurred", r, parent_ex=exc)
+            ) from exc
         except Exception as exc:
-            raise ClientException(self._get_error("An exception occurred", r, parent_ex=exc))
+            raise ClientException(
+                self._get_error("An exception occurred", r, parent_ex=exc)
+            ) from exc
 
     def _get_error(self, msg, req, parent_ex=None):
         if req is not None and req.status_code == 429:
             # Too many requests
-            server_msg = "Too many requests have been made, retry again after %s" % req.headers["X-RateLimit-Reset"]
+            server_msg = f"Too many requests have been made, retry again after {req.headers["X-RateLimit-Reset"]}"
         else:
             try:
                 server_msg = req.json()["message"]
-            except:
+            except:  # noqa: E722
                 if req is not None:
                     server_msg = str(req.status_code)
                 elif parent_ex is not None:
                     if isinstance(parent_ex, httpx.ConnectTimeout):
                         server_msg = "Timed out connecting to ngenic server"
-                        
+
                     elif isinstance(parent_ex, httpx.ConnectTimeout):
                         server_msg = "Timed out sending request to ngenic server"
                     else:
                         server_msg = str(parent_ex)
                 else:
                     server_msg = "Unknown error"
-                pass
 
-        return "%s: %s" % (msg, server_msg)
+        return f"{msg}: {server_msg}"
 
     def _prehandle_write(self, data, is_json, **kwargs):
         headers = {}
@@ -230,62 +271,44 @@ class NgenicBase(object):
 
     def _delete(self, url, **kwargs):
         LOG.debug("DELETE %s with %s", url, kwargs)
-        return self._request("delete",
-                             "%s/%s" % (API_URL, url))
-                            
+        return self._request("delete", f"{API_URL}/{url}")
+
     def _async_delete(self, url, **kwargs):
         LOG.debug("DELETE %s with %s", url, kwargs)
-        return self._async_request("delete",
-                             False,
-                             "%s/%s" % (API_URL, url))
+        return self._async_request("delete", False, f"{API_URL}/{url}")
 
     def _get(self, url, **kwargs):
         LOG.debug("GET %s with %s", url, kwargs)
-        return self._request("get",
-                             "%s/%s" % (API_URL, url),
-                             **kwargs)
+        return self._request("get", f"{API_URL}/{url}", **kwargs)
 
     async def _async_get(self, url, **kwargs):
         LOG.debug("GET %s with %s", url, kwargs)
-        return await self._async_request("get",
-                             False,
-                             "%s/%s" % (API_URL, url),
-                             **kwargs)
+        return await self._async_request("get", False, f"{API_URL}/{url}", **kwargs)
 
     def _post(self, url, data=None, is_json=True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, kwargs)
 
         LOG.debug("POST %s with %s, %s", url, data, kwargs)
-        return self._request("post",
-                             "%s/%s" % (API_URL, url),
-                             data=data,
-                             headers=headers)
+        return self._request("post", f"{API_URL}/{url}", data=data, headers=headers)
 
     def _async_post(self, url, data=None, is_json=True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, kwargs)
 
         LOG.debug("POST %s with %s, %s", url, data, kwargs)
-        return self._async_request("post",
-                             False,
-                             "%s/%s" % (API_URL, url),
-                             data=data,
-                             headers=headers)
+        return self._async_request(
+            "post", False, f"{API_URL}/{url}", data=data, headers=headers
+        )
 
     def _put(self, url, data=None, is_json=True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, **kwargs)
-        
+
         LOG.debug("PUT %s with %s, %s", url, data, kwargs)
-        return self._request("put",
-                             "%s/%s" % (API_URL, url),
-                             data=data,
-                             headers=headers)
+        return self._request("put", f"{API_URL}/{url}", data=data, headers=headers)
 
     def _async_put(self, url, data=None, is_json=True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, **kwargs)
-        
+
         LOG.debug("PUT %s with %s, %s", url, data, kwargs)
-        return self._async_request("put",
-                             False,
-                             "%s/%s" % (API_URL, url),
-                             data=data,
-                             headers=headers)
+        return self._async_request(
+            "put", False, f"{API_URL}/{url}", data=data, headers=headers
+        )

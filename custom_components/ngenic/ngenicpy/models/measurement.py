@@ -1,10 +1,16 @@
-import json
-from enum import Enum
-from .base import NgenicBase
-from ..const import API_PATH
+"""Ngenic API measurement model."""
 
-# Undocumented in API
+from enum import Enum
+
+from .base import NgenicBase
+
+
 class MeasurementType(Enum):
+    """Measurement type enumeration.
+
+    Undocumented in API.
+    """
+
     UNKNOWN = "unknown"
     TEMPERATURE = "temperature_C"
     TARGET_TEMPERATURE = "target_temperature_C"
@@ -20,15 +26,19 @@ class MeasurementType(Enum):
     def _missing_(cls, value):
         return cls.UNKNOWN
 
+
 class Measurement(NgenicBase):
-    def __init__(self, session, json, node, measurement_type):
+    """Ngenic API measurement model."""
+
+    def __init__(self, session, json_data, node, measurement_type) -> None:
+        """Initialize the measurement model."""
         self._parentNode = node
         self._measurementType = measurement_type
 
-        super(Measurement, self).__init__(session=session, json=json)
+        super().__init__(session=session, json_data=json_data)
 
     def get_type(self):
-        """Get the measurement type
+        """Get the measurement type.
 
         :return:
             measurement type

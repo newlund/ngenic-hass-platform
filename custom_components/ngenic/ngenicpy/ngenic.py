@@ -1,27 +1,23 @@
-"""This module contains the main interfaces to the API."""
-
-from .models import NgenicBase
-from .models import Tune
-from .models import Room
-from .const import API_PATH
-from .const import API_URL
-from .exceptions import ApiException, ClientException
+"""Module containing the main interfaces to the API."""
 
 import logging
-import json
+
 import httpx
+
+from .const import API_PATH
+from .models import NgenicBase, Tune
 
 LOG = logging.getLogger(__package__)
 
 # 30sec for connect, 10sec elsewhere.
 timeout = httpx.Timeout(10.0, connect=20.0)
 
+
 class BaseClient(NgenicBase):
-    def __init(self, session):
-        super(BaseClient, self).__init__(session=session)
+    """Base class for the Ngenic API client."""
 
     def tunes(self):
-        """Fetch all tunes
+        """Fetch all tunes.
 
         :return:
             a list of tunes
@@ -32,7 +28,7 @@ class BaseClient(NgenicBase):
         return self._parse_new_instance(url, Tune)
 
     async def async_tunes(self):
-        """Fetch all tunes (async)
+        """Fetch all tunes (async).
 
         :return:
             a list of tunes
@@ -43,7 +39,7 @@ class BaseClient(NgenicBase):
         return await self._async_parse_new_instance(url, Tune)
 
     def tune(self, tuneUuid):
-        """Fetch a single tune
+        """Fetch a single tune.
 
         :param str tuneUUid:
             (required) tune UUID
@@ -56,7 +52,7 @@ class BaseClient(NgenicBase):
         return self._parse_new_instance(url, Tune)
 
     def async_tune(self, tuneUuid):
-        """Fetch a single tune
+        """Fetch a single tune.
 
         :param str tuneUUid:
             (required) tune UUID
@@ -67,9 +63,12 @@ class BaseClient(NgenicBase):
         """
         url = API_PATH["tunes"].format(tuneUuid=tuneUuid)
         return self._async_parse_new_instance(url, Tune)
-    
+
+
 class Ngenic(BaseClient):
-    def __init__(self, token):
+    """Ngenic API client."""
+
+    def __init__(self, token) -> None:
         """Initialize an ngenic object.
 
         :param token:
@@ -80,25 +79,30 @@ class Ngenic(BaseClient):
         self._token = token
 
         # this header will be added to each HTTP request
-        self._auth_headers = {"Authorization": "Bearer %s" % self._token}
+        self._auth_headers = {"Authorization": f"Bearer {self._token}"}
 
-        session = httpx.Client(headers=self._auth_headers, timeout=timeout) 
+        session = httpx.Client(headers=self._auth_headers, timeout=timeout)
 
         # initializing this doesn't require a session or json
-        super(Ngenic, self).__init__(session=session)
+        super().__init__(session=session)
 
     def __enter__(self):
+        """Enter the context manager."""
         return self
 
     def __exit__(self, *args):
+        """Exit the context manager."""
         self.close()
 
     def close(self):
-        """Close the session if it was not created as a context manager"""
+        """Close the session if it was not created as a context manager."""
         self._session.close()
 
+
 class AsyncNgenic(BaseClient):
-    def __init__(self, token):
+    """Ngenic API client."""
+
+    def __init__(self, token) -> None:
         """Initialize an async ngenic object.
 
         :param token:
@@ -109,19 +113,21 @@ class AsyncNgenic(BaseClient):
         self._token = token
 
         # this header will be added to each HTTP request
-        self._auth_headers = {"Authorization": "Bearer %s" % self._token}
+        self._auth_headers = {"Authorization": f"Bearer {self._token}"}
 
-        session = httpx.AsyncClient(headers=self._auth_headers, timeout=timeout) 
+        session = httpx.AsyncClient(headers=self._auth_headers, timeout=timeout)
 
         # initializing this doesn't require a session or json
-        super(AsyncNgenic, self).__init__(session=session)
+        super().__init__(session=session)
 
     async def __aenter__(self):
+        """Enter the context manager."""
         return self
 
     async def __aexit__(self, *args):
+        """Exit the context manager."""
         await self.async_close()
 
     async def async_close(self):
-        """Close the session if it was not created as a context manager"""
+        """Close the session if it was not created as a context manager."""
         await self._session.aclose()

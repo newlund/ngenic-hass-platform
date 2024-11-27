@@ -1,15 +1,20 @@
-import json
+"""Tune model."""
+
+from ..const import API_PATH  # noqa: TID252
 from .base import NgenicBase
-from .room import Room
 from .node import Node
-from ..const import API_PATH
+from .room import Room
+
 
 class Tune(NgenicBase):
-    def __init__(self, session, json):
-        super(Tune, self).__init__(session=session, json=json)
+    """Ngenic API Tune model."""
+
+    def __init__(self, session, json_data) -> None:
+        """Initialize the tune model."""
+        super().__init__(session=session, json_data=json_data)
 
     def uuid(self):
-        """Get the tune UUID"""
+        """Get the tune UUID."""
 
         # If a tune was fetched with the list API, it contains "tuneUuid"
         # If it was fetched directly (with UUID), it contains "uuid"
@@ -52,19 +57,6 @@ class Tune(NgenicBase):
         """
         url = API_PATH["rooms"].format(tuneUuid=self.uuid(), roomUuid=roomUuid)
         return self._parse_new_instance(url, Room, tune=self)
-
-    async def async_room(self, roomUuid):
-        """Get data about a Room (async). A Room contains an indoor sensor.
-
-        :param str roomUuid:
-            (required) room UUID
-        :return:
-            the room
-        :rtype:
-            `~ngenic.models.room.Room`
-        """
-        url = API_PATH["rooms"].format(tuneUuid=self.uuid(), roomUuid=roomUuid)
-        return await self._async_parse_new_instance(url, Room, tune=self)
 
     async def async_room(self, roomUuid):
         """Get data about a Room (async). A Room contains an indoor sensor.
