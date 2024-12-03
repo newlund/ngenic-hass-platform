@@ -1,6 +1,7 @@
 """Module containing the main interfaces to the API."""
 
 import logging
+import ssl
 
 import httpx
 
@@ -11,6 +12,16 @@ LOG = logging.getLogger(__package__)
 
 # 30sec for connect, 10sec elsewhere.
 timeout = httpx.Timeout(10.0, connect=20.0)
+
+
+def _create_local_ssl_context() -> ssl.SSLContext:
+    """Create SSL context."""
+
+    return ssl.create_default_context()
+
+
+# The default SSLContext objects are created at import time
+SSL_CONTEXT_LOCAL_API = _create_local_ssl_context()
 
 
 class BaseClient(NgenicBase):
@@ -81,7 +92,11 @@ class Ngenic(BaseClient):
         # this header will be added to each HTTP request
         self._auth_headers = {"Authorization": f"Bearer {self._token}"}
 
-        session = httpx.Client(headers=self._auth_headers, timeout=timeout)
+        session = httpx.Client(
+            headers=self._auth_headers,
+            timeout=timeout,
+            verify=SSL_CONTEXT_LOCAL_API,
+        )
 
         # initializing this doesn't require a session or json
         super().__init__(session=session)
@@ -115,7 +130,11 @@ class AsyncNgenic(BaseClient):
         # this header will be added to each HTTP request
         self._auth_headers = {"Authorization": f"Bearer {self._token}"}
 
-        session = httpx.AsyncClient(headers=self._auth_headers, timeout=timeout)
+        session = httpx.AsyncClient(
+            headers=self._auth_headers,
+            timeout=timeout,
+            verify=SSL_CONTEXT_LOCAL_API,
+        )
 
         # initializing this doesn't require a session or json
         super().__init__(session=session)
