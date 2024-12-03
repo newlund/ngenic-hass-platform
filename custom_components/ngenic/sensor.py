@@ -10,10 +10,11 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 import homeassistant.util.dt as dt_util
 
-from .const import DATA_CLIENT, DOMAIN
+from .const import BRAND, DATA_CLIENT, DOMAIN
 from .ngenicpy.models.measurement import MeasurementType
 from .ngenicpy.models.node import Node, NodeType
 from .ngenicpy.models.node_status import NodeStatus
@@ -127,6 +128,12 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                     if room["nodeUuid"] == node.uuid():
                         node_name = f"{node_name} {room["name"]}"
 
+            device_info = DeviceInfo(
+                identifiers={(DOMAIN, node.uuid())},
+                manufacturer=BRAND,
+                model=node.get_type().name.capitalize(),
+                name=node_name,
+            )
             measurement_types = await node.async_measurement_types()
             if MeasurementType.TEMPERATURE in measurement_types:
                 devices.append(
@@ -137,16 +144,29 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                         node_name,
                         timedelta(minutes=5),
                         MeasurementType.TEMPERATURE,
+                        device_info,
                     )
                 )
                 devices.append(
                     NgenicBatterySensor(
-                        hass, ngenic, node, node_name, timedelta(minutes=5), "BATTERY"
+                        hass,
+                        ngenic,
+                        node,
+                        node_name,
+                        timedelta(minutes=5),
+                        "BATTERY",
+                        device_info,
                     )
                 )
                 devices.append(
                     NgenicSignalSensor(
-                        hass, ngenic, node, node_name, timedelta(minutes=5), "SIGNAL"
+                        hass,
+                        ngenic,
+                        node,
+                        node_name,
+                        timedelta(minutes=5),
+                        "SIGNAL",
+                        device_info,
                     )
                 )
 
@@ -162,6 +182,7 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                         node_name,
                         timedelta(minutes=5),
                         MeasurementType.CONTROL_VALUE,
+                        device_info,
                     )
                 )
 
@@ -174,6 +195,7 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                         node_name,
                         timedelta(minutes=5),
                         MeasurementType.HUMIDITY,
+                        device_info,
                     )
                 )
 
@@ -186,6 +208,7 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                         node_name,
                         timedelta(minutes=1),
                         MeasurementType.POWER_KW,
+                        device_info,
                     )
                 )
 
@@ -198,6 +221,7 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                         node_name,
                         timedelta(minutes=10),
                         MeasurementType.ENERGY_KWH,
+                        device_info,
                     )
                 )
                 devices.append(
@@ -208,6 +232,7 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                         node_name,
                         timedelta(minutes=20),
                         MeasurementType.ENERGY_KWH,
+                        device_info,
                     )
                 )
                 devices.append(
@@ -218,6 +243,7 @@ async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
                         node_name,
                         timedelta(minutes=60),
                         MeasurementType.ENERGY_KWH,
+                        device_info,
                     )
                 )
 
@@ -236,7 +262,14 @@ class NgenicSensor(SensorEntity):
     """Representation of an Ngenic Sensor."""
 
     def __init__(
-        self, hass: HomeAssistant, ngenic, node, name, update_interval, measurement_type
+        self,
+        hass: HomeAssistant,
+        ngenic,
+        node,
+        name,
+        update_interval,
+        measurement_type,
+        device_info,
     ) -> None:
         """Initialize the sensor."""
 
@@ -249,6 +282,7 @@ class NgenicSensor(SensorEntity):
         self._update_interval = update_interval
         self._measurement_type = measurement_type
         self._updater = None
+        self._attr_device_info = device_info
 
     @property
     def name(self):

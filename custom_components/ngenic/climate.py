@@ -10,9 +10,10 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from .const import DATA_CLIENT, DOMAIN
+from .const import BRAND, DATA_CLIENT, DOMAIN
 from .ngenicpy.models.measurement import MeasurementType
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +78,12 @@ class NgenicTune(ClimateEntity):
         self._current_temperature = None
         self._target_temperature = None
         self._updater = None
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"tune_{self._node.uuid()}")},
+            manufacturer=BRAND,
+            name=self._name,
+            model="Tune",
+        )
 
     @property
     def supported_features(self):
