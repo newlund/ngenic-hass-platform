@@ -9,7 +9,7 @@ from homeassistant.const import CONF_TOKEN
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
-from .ngenicpy import Ngenic
+from .ngenicpy import AsyncNgenic
 from .ngenicpy.exceptions import ClientException
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,11 +49,11 @@ class FlowHandler(config_entries.ConfigFlow):
                 if user_input[CONF_TOKEN] in configured_instances(self.hass):
                     return self._show_form("already_configured")
 
-                ngenic = Ngenic(token=user_input[CONF_TOKEN])
+                ngenic = AsyncNgenic(token=user_input[CONF_TOKEN])
 
                 tune_name = None
 
-                for tune in ngenic.tunes():
+                for tune in await ngenic.async_tunes():
                     tune_name = tune["tuneName"]
 
                 if tune_name is None:

@@ -149,42 +149,9 @@ class NgenicBase:
         ret_json = self._parse(await self._async_get(url))
         return self._new_instance(instance_class, ret_json, **kwargs)
 
-    def _request(self, method, *args, **kwargs):
-        """Make a HTTP request.
-
-        This is the generic method for all requests, it will handle errors etc in a common way.
-
-        :param str method:
-            (required) HTTP method (i.e get, post, delete)
-        :param args:
-            Additional args to requests lib
-        :param kwargs:
-            Additional kwargs to requests lib
-        :return:
-            request
-        """
-        r = None
-        try:
-            if not isinstance(self._session, httpx.Client):
-                raise TypeError("Cannot use sync methods when context is async")  # noqa: TRY301
-
-            request_method = getattr(self._session, method)
-            r = request_method(*args, **kwargs)
-
-            # raise for e.g. 401
-            r.raise_for_status()
-
-            return r  # noqa: TRY300
-        except httpx.HTTPError as exc:
-            raise ClientException(
-                self._get_error("A request exception occurred", r, parent_ex=exc)
-            ) from exc
-        except Exception as exc:
-            raise ClientException(
-                self._get_error("An exception occurred", r, parent_ex=exc)
-            ) from exc
-
-    async def _async_request(self, method, is_retry, *args, **kwargs):
+    async def _async_request(
+        self, method: str, url: str, is_retry: bool, *args, **kwargs
+    ):
         """Make a HTTP request (async).
 
         This is the generic method for all requests, it will handle errors etc in a common way.
@@ -201,13 +168,16 @@ class NgenicBase:
         :return:
             request
         """
+
+        LOG.debug("%s %s with %s %s", method.upper(), url, args, kwargs)
+
         r = None
         try:
             if not isinstance(self._session, httpx.AsyncClient):
                 raise TypeError("Cannot use async methods when context is sync")  # noqa: TRY301
 
             request_method = getattr(self._session, method)
-            r = await request_method(*args, **kwargs)
+            r = await request_method(url, *args, **kwargs)
 
             # raise for e.g. 401
             r.raise_for_status()
@@ -223,7 +193,7 @@ class NgenicBase:
             LOG.debug(
                 "Got a CloseError while trying to send request. Retry request once."
             )
-            return await self._async_request(method, True, *args, **kwargs)
+            return await self._async_request(method, url, True, *args, **kwargs)
         except httpx.HTTPError as exc:
             raise ClientException(
                 self._get_error("A request exception occurred", r, parent_ex=exc)
@@ -269,46 +239,20 @@ class NgenicBase:
 
         return (data, headers)
 
-    def _delete(self, url, **kwargs):
-        LOG.debug("DELETE %s with %s", url, kwargs)
-        return self._request("delete", f"{API_URL}/{url}")
-
-    def _async_delete(self, url, **kwargs):
-        LOG.debug("DELETE %s with %s", url, kwargs)
-        return self._async_request("delete", False, f"{API_URL}/{url}")
-
-    def _get(self, url, **kwargs):
-        LOG.debug("GET %s with %s", url, kwargs)
-        return self._request("get", f"{API_URL}/{url}", **kwargs)
+    def _async_delete(self, url):
+        return self._async_request("delete", f"{API_URL}/{url}", False)
 
     async def _async_get(self, url, **kwargs):
-        LOG.debug("GET %s with %s", url, kwargs)
-        return await self._async_request("get", False, f"{API_URL}/{url}", **kwargs)
-
-    def _post(self, url, data=None, is_json=True, **kwargs):
-        data, headers = self._prehandle_write(data, is_json, kwargs)
-
-        LOG.debug("POST %s with %s, %s", url, data, kwargs)
-        return self._request("post", f"{API_URL}/{url}", data=data, headers=headers)
+        return await self._async_request("get", f"{API_URL}/{url}", False, **kwargs)
 
     def _async_post(self, url, data=None, is_json=True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, kwargs)
-
-        LOG.debug("POST %s with %s, %s", url, data, kwargs)
         return self._async_request(
-            "post", False, f"{API_URL}/{url}", data=data, headers=headers
+            "post", f"{API_URL}/{url}", False, data=data, headers=headers
         )
-
-    def _put(self, url, data=None, is_json=True, **kwargs):
-        data, headers = self._prehandle_write(data, is_json, **kwargs)
-
-        LOG.debug("PUT %s with %s, %s", url, data, kwargs)
-        return self._request("put", f"{API_URL}/{url}", data=data, headers=headers)
 
     def _async_put(self, url, data=None, is_json=True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, **kwargs)
-
-        LOG.debug("PUT %s with %s, %s", url, data, kwargs)
         return self._async_request(
-            "put", False, f"{API_URL}/{url}", data=data, headers=headers
+            "put", f"{API_URL}/{url}", False, data=data, headers=headers
         )
