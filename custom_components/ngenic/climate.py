@@ -165,9 +165,7 @@ class NgenicTune(ClimateEntity):
         except Exception:
             # Don't throw an exception if a sensor fails to update.
             # Instead, make the sensor unavailable.
-            _LOGGER.exception(
-                "Failed to update climate '%(unique_id)s'", self.unique_id
-            )
+            _LOGGER.exception("Failed to update climate '%s'", self.unique_id)
             self._available = False
             return
 

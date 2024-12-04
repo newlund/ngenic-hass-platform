@@ -93,7 +93,7 @@ async def get_measurement_value(node, **kwargs):
     if not measurement:
         # measurement API will return None if no measurements were found for the period
         _LOGGER.info(
-            "Measurement not found for period, this is expected when data have not been gathered for the period (type=%(measurement_type)s, from=%(from_dt)s, to=%(to_dt)s)",
+            "Measurement not found for period, this is expected when data have not been gathered for the period (type=%s, from=%s, to=%s)",
             kwargs.get("measurement_type", "unknown"),
             kwargs.get("from_dt", "None"),
             kwargs.get("to_dt", "None"),
@@ -345,7 +345,7 @@ class NgenicSensor(SensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.debug(
-            "Fetch measurement (name=%(name)s, type=%(measurement_type)s)",
+            "Fetch measurement (name=%s, type=%s)",
             self._name,
             self._measurement_type,
         )
@@ -355,14 +355,14 @@ class NgenicSensor(SensorEntity):
         except Exception:
             # Don't throw an exception if a sensor fails to update.
             # Instead, make the sensor unavailable.
-            _LOGGER.exception("Failed to update sensor '%(unique_id)s'", self.unique_id)
+            _LOGGER.exception("Failed to update sensor '%s'", self.unique_id)
             self._available = False
             return
 
         if self._state != new_state:
             self._state = new_state
             _LOGGER.debug(
-                "New measurement: %(state)f (name=%(name)s, type=%(measurement_type)s)",
+                "New measurement: %d (name=%s, type=%s)",
                 new_state,
                 self._name,
                 self._measurement_type,
@@ -376,7 +376,7 @@ class NgenicSensor(SensorEntity):
                 self.schedule_update_ha_state()
         else:
             _LOGGER.debug(
-                "No new measurement: %(state)f (name=%(name)s, type=%(measurement_type)s)",
+                "No new measurement: %d (name=%s, type=%s)",
                 self._state,
                 self._name,
                 self._measurement_type,
