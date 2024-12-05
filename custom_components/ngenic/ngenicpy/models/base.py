@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Any
 
 from aiocache import cached
 import httpx
@@ -15,7 +16,9 @@ LOG = logging.getLogger(__package__)
 class NgenicBase:
     """Superclass for all models."""
 
-    def __init__(self, session=None, json_data=None) -> None:
+    def __init__(
+        self, session: httpx.AsyncClient = None, json_data: dict[str, Any] | None = None
+    ) -> None:
         """Initialize our base object.
 
         :param session:
@@ -30,7 +33,7 @@ class NgenicBase:
         # backing json of the model
         self._json = json_data
 
-    def json(self):
+    def json(self) -> dict[str, Any]:
         """Get a json representaiton of the model.
 
         :return:
@@ -38,11 +41,11 @@ class NgenicBase:
         """
         return self._json
 
-    def uuid(self):
+    def uuid(self) -> str:
         """Get uuid attribute."""
         return self["uuid"]
 
-    def __setitem__(self, attribute, data):
+    def __setitem__(self, attribute: str, data: Any):
         """Set an attribute in the model's JSON representation.
 
         :param attribute:
@@ -52,7 +55,7 @@ class NgenicBase:
         """
         self._json[attribute] = data
 
-    def __getitem__(self, attribute):
+    def __getitem__(self, attribute: str) -> Any:
         """Get an attribute from the model's JSON representation.
 
         :param attribute:
@@ -66,11 +69,11 @@ class NgenicBase:
             raise AttributeError(attribute)
         return self._json[attribute]
 
-    def update(self):
+    def update(self) -> None:
         """Raise an exception as update is not allowed."""
         raise ClientException(f"Cannot update a '{self.__class__.__name__}'")
 
-    def _parse(self, response):
+    def _parse(self, response: httpx.Response) -> Any:
         rsp_json = None
 
         if response is None:
@@ -88,7 +91,9 @@ class NgenicBase:
 
         return rsp_json
 
-    def _new_instance(self, instance_class, json_data, **kwargs):
+    def _new_instance(
+        self, instance_class: type, json_data: Any, **kwargs
+    ) -> type | list[type] | None:
         """Create a new model instance.
 
         :param class instance_class:
@@ -116,29 +121,14 @@ class NgenicBase:
             ]
         return instance_class(self._session, json_data, **kwargs)
 
-    def _parse_new_instance(self, url, instance_class, **kwargs):
+    async def _async_parse_new_instance(
+        self, url: str, instance_class: type, **kwargs
+    ) -> type | list[type] | None:
         """Get JSON from an URL and create a new instance of it.
 
         :param str url:
             (required) url to get instance data from
-        :param class instance_class:
-            (required) class of instance to initialize with parsed data
-        :param kwargs:
-            may contain additional args to the instance class
-        :return:
-            new `instance_class`
-        :rtype:
-            `instance_class`
-        """
-        ret_json = self._parse(self._get(url))
-        return self._new_instance(instance_class, ret_json, **kwargs)
-
-    async def _async_parse_new_instance(self, url, instance_class, **kwargs):
-        """Get JSON from an URL and create a new instance of it.
-
-        :param str url:
-            (required) url to get instance data from
-        :param class instance_class:
+        :param type instance_class:
             (required) class of instance to initialize with parsed data
         :param kwargs:
             may contain additional args to the instance class
@@ -152,7 +142,7 @@ class NgenicBase:
 
     async def _async_request(
         self, method: str, url: str, is_retry: bool, *args, **kwargs
-    ):
+    ) -> httpx.Response:
         """Make a HTTP request (async).
 
         This is the generic method for all requests, it will handle errors etc in a common way.
@@ -167,28 +157,28 @@ class NgenicBase:
         :param kwargs:
             Additional kwargs to requests lib
         :return:
-            request
+            response
         """
 
         LOG.debug("%s %s with %s %s", method.upper(), url, args, kwargs)
 
-        r = None
+        res: httpx.Response | None = None
         try:
             if not isinstance(self._session, httpx.AsyncClient):
                 raise TypeError("Cannot use async methods when context is sync")  # noqa: TRY301
 
             request_method = getattr(self._session, method)
-            r = await request_method(url, *args, **kwargs)
+            res = await request_method(url, *args, **kwargs)
 
             # raise for e.g. 401
-            r.raise_for_status()
+            res.raise_for_status()
 
-            return r  # noqa: TRY300
+            return res  # noqa: TRY300
         except httpx.CloseError as exc:
             if is_retry:
                 # only retry once
                 raise ClientException(
-                    self._get_error("A request exception occurred", r, parent_ex=exc)
+                    self._get_error("A request exception occurred", res, parent_ex=exc)
                 ) from exc
             # retry request
             LOG.debug(
@@ -197,23 +187,25 @@ class NgenicBase:
             return await self._async_request(method, url, True, *args, **kwargs)
         except httpx.HTTPError as exc:
             raise ClientException(
-                self._get_error("A request exception occurred", r, parent_ex=exc)
+                self._get_error("A request exception occurred", res, parent_ex=exc)
             ) from exc
         except Exception as exc:
             raise ClientException(
-                self._get_error("An exception occurred", r, parent_ex=exc)
+                self._get_error("An exception occurred", res, parent_ex=exc)
             ) from exc
 
-    def _get_error(self, msg, req, parent_ex=None):
-        if req is not None and req.status_code == 429:
+    def _get_error(
+        self, msg: str, res: httpx.Response, parent_ex: Exception | None = None
+    ):
+        if res is not None and res.status_code == 429:
             # Too many requests
-            server_msg = f"Too many requests have been made, retry again after {req.headers["X-RateLimit-Reset"]}"
+            server_msg = f"Too many requests have been made, retry again after {res.headers["X-RateLimit-Reset"]}"
         else:
             try:
-                server_msg = req.json()["message"]
+                server_msg = res.json()["message"]
             except:  # noqa: E722
-                if req is not None:
-                    server_msg = str(req.status_code)
+                if res is not None:
+                    server_msg = str(res.status_code)
                 elif parent_ex is not None:
                     if isinstance(parent_ex, httpx.ConnectTimeout):
                         server_msg = "Timed out connecting to ngenic server"
@@ -227,7 +219,7 @@ class NgenicBase:
 
         return f"{msg}: {server_msg}"
 
-    def _prehandle_write(self, data, is_json, **kwargs):
+    def _prehandle_write(self, data: Any, is_json: bool, **kwargs):
         headers = {}
 
         if is_json:
@@ -240,20 +232,20 @@ class NgenicBase:
 
         return (data, headers)
 
-    def _async_delete(self, url):
+    def _async_delete(self, url: str):
         return self._async_request("delete", f"{API_URL}/{url}", False)
 
     @cached(ttl=5)
-    async def _async_get(self, url, **kwargs):
+    async def _async_get(self, url: str, **kwargs):
         return await self._async_request("get", f"{API_URL}/{url}", False, **kwargs)
 
-    def _async_post(self, url, data=None, is_json=True, **kwargs):
+    def _async_post(self, url: str, data: Any = None, is_json: bool = True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, kwargs)
         return self._async_request(
             "post", f"{API_URL}/{url}", False, data=data, headers=headers
         )
 
-    def _async_put(self, url, data=None, is_json=True, **kwargs):
+    def _async_put(self, url: str, data: Any = None, is_json: bool = True, **kwargs):
         data, headers = self._prehandle_write(data, is_json, **kwargs)
         return self._async_request(
             "put", f"{API_URL}/{url}", False, data=data, headers=headers

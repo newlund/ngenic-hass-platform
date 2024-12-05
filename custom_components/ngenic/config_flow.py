@@ -1,6 +1,7 @@
 """Config flow component for Ngenic integration."""
 
 import logging
+from typing import Any
 
 import voluptuous as vol
 
@@ -16,8 +17,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @callback
-def configured_instances(hass: HomeAssistant):
+def configured_instances(hass: HomeAssistant) -> set:
     """Return a set of configured Ngenic instances."""
+
     return {
         entry.data[CONF_TOKEN] for entry in hass.config_entries.async_entries(DOMAIN)
     }
@@ -37,11 +39,11 @@ class FlowHandler(config_entries.ConfigFlow):
             errors={"base": error} if error is not None else {},
         )
 
-    async def async_step_import(self, import_config):
+    async def async_step_import(self, import_config: dict[str, str]):
         """Import a config entry from configuration.yaml."""
         return await self.async_step_user(import_config)
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input: dict[str, Any] | None = None):
         """Handle the start of the config flow."""
 
         if user_input is not None:
@@ -57,7 +59,7 @@ class FlowHandler(config_entries.ConfigFlow):
                     tune_name = tune["tuneName"]
 
                 if tune_name is None:
-                    return self._show_form("no_tune")
+                    return self._show_form("no_tunes")
 
                 return self.async_create_entry(title=tune_name, data=user_input)
 

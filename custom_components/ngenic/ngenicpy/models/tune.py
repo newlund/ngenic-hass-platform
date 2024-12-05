@@ -1,5 +1,9 @@
 """Tune model."""
 
+from typing import Any
+
+import httpx
+
 from ..const import API_PATH  # noqa: TID252
 from .base import NgenicBase
 from .node import Node
@@ -9,11 +13,11 @@ from .room import Room
 class Tune(NgenicBase):
     """Ngenic API Tune model."""
 
-    def __init__(self, session, json_data) -> None:
+    def __init__(self, session: httpx.AsyncClient, json_data: dict[str, Any]) -> None:
         """Initialize the tune model."""
         super().__init__(session=session, json_data=json_data)
 
-    def uuid(self):
+    def uuid(self) -> str:
         """Get the tune UUID."""
 
         # If a tune was fetched with the list API, it contains "tuneUuid"
@@ -23,7 +27,7 @@ class Tune(NgenicBase):
         except AttributeError:
             return super().uuid()
 
-    async def async_rooms(self):
+    async def async_rooms(self) -> list[Room]:
         """List all Rooms associated with a Tune (async). A Room contains an indoor sensor.
 
         :return:
@@ -32,9 +36,9 @@ class Tune(NgenicBase):
             `list(~ngenic.models.room.Room)`
         """
         url = API_PATH["rooms"].format(tuneUuid=self.uuid(), roomUuid="")
-        return await self._async_parse_new_instance(url, Room, tune=self)
+        return await self._async_parse_new_instance(url, Room, tuneUuid=self.uuid())
 
-    async def async_room(self, roomUuid):
+    async def async_room(self, roomUuid: str) -> Room:
         """Get data about a Room (async). A Room contains an indoor sensor.
 
         :param str roomUuid:
@@ -45,9 +49,9 @@ class Tune(NgenicBase):
             `~ngenic.models.room.Room`
         """
         url = API_PATH["rooms"].format(tuneUuid=self.uuid(), roomUuid=roomUuid)
-        return await self._async_parse_new_instance(url, Room, tune=self)
+        return await self._async_parse_new_instance(url, Room, tuneUuid=self.uuid())
 
-    async def async_nodes(self):
+    async def async_nodes(self) -> list[Node]:
         """List all Nodes associated with a Tune (async). A Node is a logical network entity.
 
         :return:
@@ -56,9 +60,9 @@ class Tune(NgenicBase):
             `list(~ngenic.models.node.Node)`
         """
         url = API_PATH["nodes"].format(tuneUuid=self.uuid(), nodeUuid="")
-        return await self._async_parse_new_instance(url, Node, tune=self)
+        return await self._async_parse_new_instance(url, Node, tuneUuid=self.uuid())
 
-    async def async_node(self, nodeUuid):
+    async def async_node(self, nodeUuid: str) -> Node:
         """Get data about a Node (async). A Node is a logical network entity.
 
         :param str nodeUuid:
@@ -69,4 +73,4 @@ class Tune(NgenicBase):
             `~ngenic.models.node.Node`
         """
         url = API_PATH["nodes"].format(tuneUuid=self.uuid(), nodeUuid=nodeUuid)
-        return await self._async_parse_new_instance(url, Node, tune=self)
+        return await self._async_parse_new_instance(url, Node, tuneUuid=self.uuid())

@@ -11,18 +11,23 @@ from homeassistant.components.climate import (
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 
 from .const import BRAND, DATA_CLIENT, DOMAIN
+from .ngenicpy import AsyncNgenic
 from .ngenicpy.models.measurement import MeasurementType
+from .ngenicpy.models.tune import Tune
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, _, async_add_entities):
-    """Set up the sensor platform."""
+async def async_setup_entry(
+    hass: HomeAssistant, _, async_add_entities: AddEntitiesCallback
+):
+    """Set up the climate platform."""
 
-    ngenic = hass.data[DOMAIN][DATA_CLIENT]
+    ngenic: AsyncNgenic = hass.data[DOMAIN][DATA_CLIENT]
 
     devices = []
 
@@ -65,7 +70,12 @@ class NgenicTune(ClimateEntity):
     """Representation of an Ngenic Thermostat."""
 
     def __init__(
-        self, hass: HomeAssistant, ngenic, tune, control_room, control_node
+        self,
+        hass: HomeAssistant,
+        ngenic: AsyncNgenic,
+        tune: Tune,
+        control_room,
+        control_node,
     ) -> None:
         """Initialize the thermostat."""
         self._hass = hass

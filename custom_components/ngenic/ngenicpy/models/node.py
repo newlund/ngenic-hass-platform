@@ -2,6 +2,9 @@
 
 import asyncio
 from enum import Enum
+from typing import Any
+
+import httpx
 
 from ..const import API_PATH  # noqa: TID252
 from .base import NgenicBase
@@ -27,9 +30,11 @@ class NodeType(Enum):
 class Node(NgenicBase):
     """Ngenic API node model."""
 
-    def __init__(self, session, json_data, tune) -> None:
+    def __init__(
+        self, session: httpx.AsyncClient, json_data: dict[str, Any], tuneUuid: str
+    ) -> None:
         """Initialize the node model."""
-        self._parentTune = tune
+        self._parentTuneUuid = tuneUuid
 
         # A cache for measurement types
         self._measurementTypes = None
@@ -40,7 +45,7 @@ class Node(NgenicBase):
         """Get the node type."""
         return NodeType(self["type"])
 
-    async def async_measurement_types(self):
+    async def async_measurement_types(self) -> list[MeasurementType]:
         """Get types of available measurements for this node (async).
 
         :return:
@@ -50,14 +55,14 @@ class Node(NgenicBase):
         """
         if not self._measurementTypes:
             url = API_PATH["measurements_types"].format(
-                tuneUuid=self._parentTune.uuid(), nodeUuid=self.uuid()
+                tuneUuid=self._parentTuneUuid, nodeUuid=self.uuid()
             )
             measurements = self._parse(await self._async_get(url))
             self._measurementTypes = [MeasurementType(m) for m in measurements]
 
         return self._measurementTypes
 
-    async def async_measurements(self):
+    async def async_measurements(self) -> list[Measurement]:
         """Get latest measurements for a Node (async).
 
         Usually, you can get measurements from a `NodeType.SENSOR` or `NodeType.CONTROLLER`.
@@ -85,8 +90,12 @@ class Node(NgenicBase):
         )
 
     async def async_measurement(
-        self, measurement_type, from_dt=None, to_dt=None, period=None
-    ):
+        self,
+        measurement_type: MeasurementType,
+        from_dt: str | None = None,
+        to_dt: str | None = None,
+        period=None,
+    ) -> Measurement | list[Measurement] | None:
         """Get measurement for a specific period (async).
 
         :param MeasurementType measurement_type:
@@ -106,23 +115,23 @@ class Node(NgenicBase):
         """
         if from_dt is None:
             url = API_PATH["measurements_latest"].format(
-                tuneUuid=self._parentTune.uuid(), nodeUuid=self.uuid()
+                tuneUuid=self._parentTuneUuid, nodeUuid=self.uuid()
             )
             url += f"?type={measurement_type.value}"
             return await self._async_parse_new_instance(
-                url, Measurement, node=self, measurement_type=measurement_type
+                url, Measurement, measurement_type=measurement_type
             )
         url = API_PATH["measurements"].format(
-            tuneUuid=self._parentTune.uuid(), nodeUuid=self.uuid()
+            tuneUuid=self._parentTuneUuid, nodeUuid=self.uuid()
         )
         url += f"?type={measurement_type.value}&from={from_dt}&to={to_dt}"
         if period:
             url += f"&period={period}"
         return await self._async_parse_new_instance(
-            url, Measurement, node=self, measurement_type=measurement_type
+            url, Measurement, measurement_type=measurement_type
         )
 
-    async def async_status(self):
+    async def async_status(self) -> NodeStatus:
         """Get status about this Node.
 
         There are no API for getting the status for a single node, so we
@@ -133,10 +142,10 @@ class Node(NgenicBase):
         :rtype:
             `~ngenic.models.node_status.NodeStatus`
         """
-        url = API_PATH["node_status"].format(tuneUuid=self._parentTune.uuid())
+        url = API_PATH["node_status"].format(tuneUuid=self._parentTuneUuid)
         rsp_json = self._parse(await self._async_get(url))
 
         for status_obj in rsp_json:
             if status_obj["nodeUuid"] == self.uuid():
-                return self._new_instance(NodeStatus, status_obj, node=self)
+                return self._new_instance(NodeStatus, status_obj, nodeUuid=self.uuid())
         return None

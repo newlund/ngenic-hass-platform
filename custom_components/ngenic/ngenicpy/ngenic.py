@@ -27,7 +27,7 @@ SSL_CONTEXT_LOCAL_API = _create_local_ssl_context()
 class BaseClient(NgenicBase):
     """Base class for the Ngenic API client."""
 
-    async def async_tunes(self):
+    async def async_tunes(self) -> list[Tune]:
         """Fetch all tunes (async).
 
         :return:
@@ -38,7 +38,7 @@ class BaseClient(NgenicBase):
         url = API_PATH["tunes"].format(tuneUuid="")
         return await self._async_parse_new_instance(url, Tune)
 
-    def async_tune(self, tuneUuid):
+    def async_tune(self, tuneUuid: str) -> Tune:
         """Fetch a single tune.
 
         :param str tuneUUid:

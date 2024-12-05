@@ -1,8 +1,10 @@
 """Constants for the NgenicPy library."""
 
-API_URL = "https://app.ngenic.se/api/v3"
+from typing import Final
 
-API_PATH = {
+API_URL: Final[str] = "https://app.ngenic.se/api/v3"
+
+API_PATH: Final[dict[str, str]] = {
     "tunes": "tunes/{tuneUuid}",
     "rooms": "tunes/{tuneUuid}/rooms/{roomUuid}",
     "nodes": "tunes/{tuneUuid}/gateway/nodes/{nodeUuid}",

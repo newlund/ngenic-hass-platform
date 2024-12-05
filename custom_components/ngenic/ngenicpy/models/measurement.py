@@ -1,6 +1,9 @@
 """Ngenic API measurement model."""
 
 from enum import Enum
+from typing import Any
+
+import httpx
 
 from .base import NgenicBase
 
@@ -30,14 +33,18 @@ class MeasurementType(Enum):
 class Measurement(NgenicBase):
     """Ngenic API measurement model."""
 
-    def __init__(self, session, json_data, node, measurement_type) -> None:
+    def __init__(
+        self,
+        session: httpx.AsyncClient,
+        json_data: dict[str, Any],
+        measurement_type: MeasurementType,
+    ) -> None:
         """Initialize the measurement model."""
-        self._parentNode = node
         self._measurementType = measurement_type
 
         super().__init__(session=session, json_data=json_data)
 
-    def get_type(self):
+    def get_type(self) -> MeasurementType:
         """Get the measurement type.
 
         :return:
