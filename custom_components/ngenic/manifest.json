@@ -1,10 +1,11 @@
 {
-    "domain": "ngenic",
-    "name": "Ngenic Tune",
-    "version": "2.0.0",
-    "config_flow": true,
-    "documentation": "https://github.com/sfalkman/ngenic-hass-platform",
-    "issue_tracker": "https://github.com/sfalkman/ngenic-hass-platform/issues",
-    "dependencies": [],
-    "codeowners": ["@sfalkman"]
+  "domain": "ngenic",
+  "name": "Ngenic Tune",
+  "version": "2.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/dotnetdummy/ngenic-hass-platform",
+  "issue_tracker": "https://github.com/dotnetdummy/ngenic-hass-platform/issues",
+  "dependencies": [],
+  "codeowners": ["@sfalkman", "@dotnetdummy"],
+  "requirements": ["aiocache==0.12.3"]
 }

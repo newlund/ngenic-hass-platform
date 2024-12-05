@@ -3,6 +3,7 @@
 import json
 import logging
 
+from aiocache import cached
 import httpx
 
 from ..const import API_URL  # noqa: TID252
@@ -242,6 +243,7 @@ class NgenicBase:
     def _async_delete(self, url):
         return self._async_request("delete", f"{API_URL}/{url}", False)
 
+    @cached(ttl=5)
     async def _async_get(self, url, **kwargs):
         return await self._async_request("get", f"{API_URL}/{url}", False, **kwargs)
 
